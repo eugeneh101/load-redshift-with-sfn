@@ -50,10 +50,10 @@ def lambda_handler(event, context) -> None:
             "task_token": event["task_token"],
             "sql_queries": json.dumps(sql_queries),
             "redshift_response": json.dumps(response),
-            "utc_now_human_readable": utc_now.strftime("%Y-%m-%d %H:%M:%S"),
+            "utc_now_human_readable": utc_now.strftime("%Y-%m-%d %H:%M:%S") + " UTC",
             "delete_record_on": int(records_expires_on.timestamp()),
             "delete_record_on_human_readable": records_expires_on.strftime(
-                "%Y-%m-%d %H:%M:%S"
+                "%Y-%m-%d %H:%M:%S" + " UTC"
             ),
         }
     )

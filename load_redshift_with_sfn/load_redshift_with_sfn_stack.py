@@ -57,6 +57,7 @@ class LoadRedshiftWithSfnStack(Stack):
                     "redshift:GetClusterCredentials",
                     "redshift-data:ExecuteStatement",
                     "redshift-data:BatchExecuteStatement",
+                    "redshift-data:DescribeStatement",  # only needed for Trigger
                 ],
                 resources=["*"],
             ),
@@ -206,7 +207,7 @@ class LoadRedshiftWithSfnStack(Stack):
             key="REDSHIFT_ENDPOINT_ADDRESS",
             value=self.redshift_cluster.attr_endpoint_address,
         )
-        self.trigger_configure_rds_lambda = triggers.Trigger(
+        self.trigger_configure_redshift_table_lambda = triggers.Trigger(
             self,
             "TriggerConfigureRedshiftTableLambda",
             handler=self.configure_redshift_table_lambda,  # this is underlying Lambda
