@@ -1,0 +1,15 @@
+{
+    "app": "python3 app.py",
+    "context": {
+        "environment": {
+            "AWS_REGION": "us-east-1",
+            "JSON_FILEPATH": "data/silly.json",
+            "REDSHIFT_USER": "admin",
+            "REDSHIFT_PASSWORD": "Password1",
+            "REDSHIFT_DATABASE_NAME": "dev",
+            "REDSHIFT_SCHEMA_NAME": "public",
+            "REDSHIFT_TABLE_NAME": "silly_table",
+            "REDSHIFT_QUERY_MAX_RUNTIME_LIMIT_IN_MINUTES": 1
+        }
+    }
+}
