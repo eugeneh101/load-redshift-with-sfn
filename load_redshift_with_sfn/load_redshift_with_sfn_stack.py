@@ -2,7 +2,6 @@ from aws_cdk import (
     CfnOutput,
     Duration,
     RemovalPolicy,
-    SecretValue,
     Stack,
     aws_dynamodb as dynamodb,
     aws_events as events,
@@ -121,7 +120,6 @@ class LoadRedshiftWithSfnStack(Stack):
                 memory_size=128,  # in MB
                 environment={
                     "REDSHIFT_USER": environment["REDSHIFT_USER"],
-                    "REDSHIFT_PASSWORD": environment["REDSHIFT_PASSWORD"],
                     "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
                     "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
                     "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
@@ -142,7 +140,6 @@ class LoadRedshiftWithSfnStack(Stack):
             memory_size=128,  # in MB
             environment={
                 "REDSHIFT_USER": environment["REDSHIFT_USER"],
-                "REDSHIFT_PASSWORD": environment["REDSHIFT_PASSWORD"],
                 "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
                 "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
                 "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
@@ -161,13 +158,6 @@ class LoadRedshiftWithSfnStack(Stack):
             handler="handler.lambda_handler",
             timeout=Duration.seconds(3),  # should be instantaneous
             memory_size=128,  # in MB
-            environment={
-                "REDSHIFT_USER": environment["REDSHIFT_USER"],
-                "REDSHIFT_PASSWORD": environment["REDSHIFT_PASSWORD"],
-                "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
-                "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
-                "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
-            },
             role=self.lambda_redshift_access_role,
             retry_attempts=0,
         )
