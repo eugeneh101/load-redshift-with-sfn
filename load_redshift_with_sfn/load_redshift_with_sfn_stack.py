@@ -57,6 +57,7 @@ class LoadRedshiftWithSfnStack(Stack):
                     "redshift:GetClusterCredentials",
                     "redshift-data:ExecuteStatement",
                     "redshift-data:BatchExecuteStatement",
+                    "redshift-data:GetStatementResult",
                     "redshift-data:DescribeStatement",  # only needed for Trigger
                 ],
                 resources=["*"],
@@ -88,10 +89,22 @@ class LoadRedshiftWithSfnStack(Stack):
             self,
             "DynamoDBTableForRedshiftQueries",
             partition_key=dynamodb.Attribute(
-                name="redshift_queries_id", type=dynamodb.AttributeType.STRING
+                name="full_table_name", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="utc_now_human_readable", type=dynamodb.AttributeType.STRING
             ),
             time_to_live_attribute="delete_record_on",
             removal_policy=RemovalPolicy.DESTROY,
+        )
+        self.dynamodb_table.add_global_secondary_index(
+            index_name="is_still_processing_sql",  # hard coded
+            partition_key=dynamodb.Attribute(
+                name="redshift_queries_id", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="is_still_processing_sql?", type=dynamodb.AttributeType.STRING
+            ),
         )
 
         self.configure_redshift_table_lambda = (
@@ -133,6 +146,7 @@ class LoadRedshiftWithSfnStack(Stack):
                 "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
                 "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
                 "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
+                "DYNAMODB_TTL_IN_DAYS": str(environment["DYNAMODB_TTL_IN_DAYS"]),
             },
             role=self.lambda_redshift_access_role,
         )
@@ -155,6 +169,7 @@ class LoadRedshiftWithSfnStack(Stack):
                 "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
             },
             role=self.lambda_redshift_access_role,
+            retry_attempts=0,
         )
 
         # Step Function definition
@@ -249,7 +264,7 @@ class LoadRedshiftWithSfnStack(Stack):
         self.event_rule_to_trigger_redshift_queries_finished_lambda.add_target(
             events_targets.LambdaFunction(
                 handler=self.redshift_queries_finished_lambda,
-                retry_attempts=0,
+                # retry_attempts=0,  ### doesn't seem to do anything
                 ### then put in DLQ
             )
         )

@@ -13,6 +13,7 @@ REDSHIFT_USER = os.environ["REDSHIFT_USER"]
 REDSHIFT_DATABASE_NAME = os.environ["REDSHIFT_DATABASE_NAME"]
 REDSHIFT_SCHEMA_NAME = os.environ["REDSHIFT_SCHEMA_NAME"]
 REDSHIFT_TABLE_NAME = os.environ["REDSHIFT_TABLE_NAME"]
+DYNAMODB_TTL_IN_DAYS = int(os.environ["DYNAMODB_TTL_IN_DAYS"])
 S3_FILENAME = os.environ["S3_FILENAME"]
 REDSHIFT_ROLE = os.environ["REDSHIFT_ROLE"]
 
@@ -30,6 +31,7 @@ def lambda_handler(event, context) -> None:
         iam_role '{REDSHIFT_ROLE}'
         format as json 'auto';
         """,  # eventually put REDSHIFT_DATABASE_NAME, REDSHIFT_SCHEMA_NAME, REDSHIFT_TABLE_NAME as event payload
+        f"select count(*) from {REDSHIFT_DATABASE_NAME}.{REDSHIFT_SCHEMA_NAME}.{REDSHIFT_TABLE_NAME};",
     ]
     response = redshift_data_client.batch_execute_statement(
         ClusterIdentifier=REDSHIFT_CLUSTER_NAME,
@@ -43,14 +45,17 @@ def lambda_handler(event, context) -> None:
         "CreatedAt", None
     )  # has a datetime() object that is not JSON serializable
     utc_now = datetime.utcnow()
-    records_expires_on = utc_now + timedelta(days=7)
+    records_expires_on = utc_now + timedelta(days=DYNAMODB_TTL_IN_DAYS)
     dynamodb_table.put_item(
         Item={
-            "redshift_queries_id": response["Id"],
+            "full_table_name": f"{REDSHIFT_DATABASE_NAME}.{REDSHIFT_SCHEMA_NAME}.{REDSHIFT_TABLE_NAME}",  # pk in primary index
+            "utc_now_human_readable": utc_now.strftime("%Y-%m-%d %H:%M:%S")
+            + " UTC",  # sk in primary index
+            "redshift_queries_id": response["Id"],  # pk in GSI
+            "is_still_processing_sql?": "yes",  # sk in GSI
             "task_token": event["task_token"],
             "sql_queries": json.dumps(sql_queries),
             "redshift_response": json.dumps(response),
-            "utc_now_human_readable": utc_now.strftime("%Y-%m-%d %H:%M:%S") + " UTC",
             "delete_record_on": int(records_expires_on.timestamp()),
             "delete_record_on_human_readable": records_expires_on.strftime(
                 "%Y-%m-%d %H:%M:%S" + " UTC"

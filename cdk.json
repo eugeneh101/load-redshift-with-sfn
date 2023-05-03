@@ -9,7 +9,8 @@
             "REDSHIFT_DATABASE_NAME": "dev",
             "REDSHIFT_SCHEMA_NAME": "public",
             "REDSHIFT_TABLE_NAME": "silly_table",
-            "REDSHIFT_QUERY_MAX_RUNTIME_LIMIT_IN_MINUTES": 1
+            "REDSHIFT_QUERY_MAX_RUNTIME_LIMIT_IN_MINUTES": 1,
+            "DYNAMODB_TTL_IN_DAYS": 7
         }
     }
 }
