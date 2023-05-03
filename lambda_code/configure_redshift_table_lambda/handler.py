@@ -6,17 +6,17 @@ import boto3
 redshift_data_client = boto3.client("redshift-data")
 # aws_redshift.CfnCluster(...).attr_id (for cluster name) is broken, so using endpoint address instead
 REDSHIFT_CLUSTER_NAME = os.environ["REDSHIFT_ENDPOINT_ADDRESS"].split(".")[0]
-REDSHIFT_USER = os.environ["REDSHIFT_USER"]
 REDSHIFT_DATABASE_NAME = os.environ["REDSHIFT_DATABASE_NAME"]
 REDSHIFT_SCHEMA_NAME = os.environ["REDSHIFT_SCHEMA_NAME"]
+REDSHIFT_SECRET_ARN = os.environ["REDSHIFT_SECRET_ARN"]
 REDSHIFT_TABLE_NAME = os.environ["REDSHIFT_TABLE_NAME"]
 
 
 def execute_sql_statement(sql_statement: str) -> None:
     response = redshift_data_client.execute_statement(
         ClusterIdentifier=REDSHIFT_CLUSTER_NAME,
+        SecretArn=REDSHIFT_SECRET_ARN,
         Database=REDSHIFT_DATABASE_NAME,
-        DbUser=REDSHIFT_USER,
         Sql=sql_statement,
     )
     time.sleep(1)

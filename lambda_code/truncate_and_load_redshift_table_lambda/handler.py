@@ -7,15 +7,16 @@ import boto3
 
 dynamodb_table = boto3.resource("dynamodb").Table(os.environ["DYNAMODB_TABLE"])
 redshift_data_client = boto3.client("redshift-data")
+
+DYNAMODB_TTL_IN_DAYS = int(os.environ["DYNAMODB_TTL_IN_DAYS"])
 # aws_redshift.CfnCluster(...).attr_id (for cluster name) is broken, so using endpoint address instead
 REDSHIFT_CLUSTER_NAME = os.environ["REDSHIFT_ENDPOINT_ADDRESS"].split(".")[0]
-REDSHIFT_USER = os.environ["REDSHIFT_USER"]
 REDSHIFT_DATABASE_NAME = os.environ["REDSHIFT_DATABASE_NAME"]
-REDSHIFT_SCHEMA_NAME = os.environ["REDSHIFT_SCHEMA_NAME"]
-REDSHIFT_TABLE_NAME = os.environ["REDSHIFT_TABLE_NAME"]
-DYNAMODB_TTL_IN_DAYS = int(os.environ["DYNAMODB_TTL_IN_DAYS"])
-S3_FILENAME = os.environ["S3_FILENAME"]
 REDSHIFT_ROLE = os.environ["REDSHIFT_ROLE"]
+REDSHIFT_SCHEMA_NAME = os.environ["REDSHIFT_SCHEMA_NAME"]
+REDSHIFT_SECRET_ARN = os.environ["REDSHIFT_SECRET_ARN"]
+REDSHIFT_TABLE_NAME = os.environ["REDSHIFT_TABLE_NAME"]
+S3_FILENAME = os.environ["S3_FILENAME"]
 
 
 def lambda_handler(event, context) -> None:
@@ -35,8 +36,8 @@ def lambda_handler(event, context) -> None:
     ]
     response = redshift_data_client.batch_execute_statement(
         ClusterIdentifier=REDSHIFT_CLUSTER_NAME,
+        SecretArn=REDSHIFT_SECRET_ARN,
         Database=REDSHIFT_DATABASE_NAME,
-        DbUser=REDSHIFT_USER,
         Sqls=sql_queries,
         WithEvent=True,
     )

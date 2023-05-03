@@ -4,11 +4,11 @@ import os
 import boto3
 
 dynamodb_table = boto3.resource("dynamodb").Table(os.environ["DYNAMODB_TABLE"])
-sfn_client = boto3.client("stepfunctions")
 redshift_data_client = boto3.client("redshift-data")
+sfn_client = boto3.client("stepfunctions")
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context) -> None:
     # print("event", event)
     redshift_queries_state = event["detail"]["state"]
     if redshift_queries_state in ["SUBMITTED", "PICKED", "STARTED"]:

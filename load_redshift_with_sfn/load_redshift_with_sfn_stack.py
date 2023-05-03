@@ -2,6 +2,7 @@ from aws_cdk import (
     CfnOutput,
     Duration,
     RemovalPolicy,
+    SecretValue,
     Stack,
     aws_dynamodb as dynamodb,
     aws_events as events,
@@ -10,6 +11,7 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_redshift as redshift,
     aws_s3_assets as s3_assets,
+    aws_secretsmanager as secretsmanager,
     aws_stepfunctions as sfn,
     aws_stepfunctions_tasks as sfn_tasks,
     triggers,
@@ -23,13 +25,6 @@ class LoadRedshiftWithSfnStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # self.s3_bucket = s3.Bucket(self, "S3Bucket", removal_policy=RemovalPolicy.DESTROY)
-        # self.s3_file = s3_deployment.BucketDeployment(
-        #     self,
-        #     "S3File",
-        #     sources=[s3_deployment.Source.asset("data/silly.json")],
-        #     destination_bucket=self.s3_bucket,
-        # )
         self.s3_file = s3_assets.Asset(
             self, "S3File", path=environment["JSON_FILEPATH"]
         )
@@ -58,6 +53,7 @@ class LoadRedshiftWithSfnStack(Stack):
                     "redshift-data:BatchExecuteStatement",
                     "redshift-data:GetStatementResult",
                     "redshift-data:DescribeStatement",  # only needed for Trigger
+                    "secretsmanager:GetSecretValue",  # needed for authenticating BatchExecuteStatement
                 ],
                 resources=["*"],
             ),
@@ -82,6 +78,16 @@ class LoadRedshiftWithSfnStack(Stack):
                 self.lambda_redshift_access_role.role_arn
             ],  # need IAM role for S3 COPY
             publicly_accessible=False,
+        )
+        self.redshift_secret = secretsmanager.Secret(
+            self,
+            "RedshiftSecret",
+            secret_object_value={
+                "username": SecretValue.unsafe_plain_text(environment["REDSHIFT_USER"]),
+                "password": SecretValue.unsafe_plain_text(
+                    environment["REDSHIFT_PASSWORD"]
+                ),
+            },
         )
 
         self.dynamodb_table = dynamodb.Table(
@@ -119,7 +125,6 @@ class LoadRedshiftWithSfnStack(Stack):
                 timeout=Duration.seconds(10),  # may take some time
                 memory_size=128,  # in MB
                 environment={
-                    "REDSHIFT_USER": environment["REDSHIFT_USER"],
                     "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
                     "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
                     "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
@@ -139,11 +144,10 @@ class LoadRedshiftWithSfnStack(Stack):
             timeout=Duration.seconds(3),  # should be instantaneous
             memory_size=128,  # in MB
             environment={
-                "REDSHIFT_USER": environment["REDSHIFT_USER"],
+                "DYNAMODB_TTL_IN_DAYS": str(environment["DYNAMODB_TTL_IN_DAYS"]),
                 "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
                 "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
                 "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
-                "DYNAMODB_TTL_IN_DAYS": str(environment["DYNAMODB_TTL_IN_DAYS"]),
             },
             role=self.lambda_redshift_access_role,
         )
@@ -212,6 +216,10 @@ class LoadRedshiftWithSfnStack(Stack):
             key="REDSHIFT_ENDPOINT_ADDRESS",
             value=self.redshift_cluster.attr_endpoint_address,
         )
+        self.configure_redshift_table_lambda.add_environment(
+            key="REDSHIFT_SECRET_ARN",
+            value=self.redshift_secret.secret_arn,
+        )
         self.trigger_configure_redshift_table_lambda = triggers.Trigger(
             self,
             "TriggerConfigureRedshiftTableLambda",
@@ -220,18 +228,23 @@ class LoadRedshiftWithSfnStack(Stack):
             execute_before=[self.scheduled_eventbridge_event],
             # invocation_type=triggers.InvocationType.REQUEST_RESPONSE,
             # timeout=self.configure_rds_lambda.timeout,
+            # execute_on_handler_change=False,
         )
         self.truncate_and_load_redshift_table_lambda.add_environment(
             key="REDSHIFT_ENDPOINT_ADDRESS",
             value=self.redshift_cluster.attr_endpoint_address,
         )
         self.truncate_and_load_redshift_table_lambda.add_environment(
-            key="S3_FILENAME",
-            value=self.s3_file.s3_object_url,
-        )
-        self.truncate_and_load_redshift_table_lambda.add_environment(
             key="REDSHIFT_ROLE",
             value=self.lambda_redshift_access_role.role_arn,
+        )
+        self.truncate_and_load_redshift_table_lambda.add_environment(
+            key="REDSHIFT_SECRET_ARN",
+            value=self.redshift_secret.secret_arn,
+        )
+        self.truncate_and_load_redshift_table_lambda.add_environment(
+            key="S3_FILENAME",
+            value=self.s3_file.s3_object_url,
         )
         self.truncate_and_load_redshift_table_lambda.add_environment(
             key="DYNAMODB_TABLE", value=self.dynamodb_table.table_name
