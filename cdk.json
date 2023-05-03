@@ -3,13 +3,15 @@
     "context": {
         "environment": {
             "AWS_REGION": "us-east-1",
-            "JSON_FILEPATH": "data/silly.json",
+            "FILE_PATH": "data/silly.json",
+            "FILE_TYPE": "json",
             "REDSHIFT_USER": "admin",
             "REDSHIFT_PASSWORD": "Password1",
             "REDSHIFT_DATABASE_NAME": "dev",
             "REDSHIFT_SCHEMA_NAME": "public",
             "REDSHIFT_TABLE_NAME": "silly_table",
             "REDSHIFT_QUERY_MAX_RUNTIME_LIMIT_IN_MINUTES": 1,
+            "REDSHIFT_COPY_ADDITIONAL_ARGUMENTS": "'auto'",
             "DYNAMODB_TTL_IN_DAYS": 7
         }
     }

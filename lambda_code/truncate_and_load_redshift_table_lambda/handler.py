@@ -8,7 +8,9 @@ import boto3
 dynamodb_table = boto3.resource("dynamodb").Table(os.environ["DYNAMODB_TABLE"])
 redshift_data_client = boto3.client("redshift-data")
 
-DYNAMODB_TTL_IN_DAYS = int(os.environ["DYNAMODB_TTL_IN_DAYS"])
+FILE_TYPE = os.environ["FILE_TYPE"]
+DYNAMODB_TTL_IN_DAYS = json.loads(os.environ["DYNAMODB_TTL_IN_DAYS"])
+REDSHIFT_COPY_ADDITIONAL_ARGUMENTS = os.environ["REDSHIFT_COPY_ADDITIONAL_ARGUMENTS"]
 # aws_redshift.CfnCluster(...).attr_id (for cluster name) is broken, so using endpoint address instead
 REDSHIFT_CLUSTER_NAME = os.environ["REDSHIFT_ENDPOINT_ADDRESS"].split(".")[0]
 REDSHIFT_DATABASE_NAME = os.environ["REDSHIFT_DATABASE_NAME"]
@@ -30,7 +32,7 @@ def lambda_handler(event, context) -> None:
         copy {REDSHIFT_DATABASE_NAME}.{REDSHIFT_SCHEMA_NAME}.{REDSHIFT_TABLE_NAME}
         from '{S3_FILENAME}'
         iam_role '{REDSHIFT_ROLE}'
-        format as json 'auto';
+        format as {FILE_TYPE} {REDSHIFT_COPY_ADDITIONAL_ARGUMENTS};
         """,  # eventually put REDSHIFT_DATABASE_NAME, REDSHIFT_SCHEMA_NAME, REDSHIFT_TABLE_NAME as event payload
         f"select count(*) from {REDSHIFT_DATABASE_NAME}.{REDSHIFT_SCHEMA_NAME}.{REDSHIFT_TABLE_NAME};",
     ]

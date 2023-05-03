@@ -1,3 +1,5 @@
+import json
+
 from aws_cdk import (
     CfnOutput,
     Duration,
@@ -26,7 +28,7 @@ class LoadRedshiftWithSfnStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         self.s3_file = s3_assets.Asset(
-            self, "S3File", path=environment["JSON_FILEPATH"]
+            self, "S3File", path=environment["FILE_PATH"]
         )
 
         self.lambda_redshift_access_role = iam.Role(
@@ -79,6 +81,7 @@ class LoadRedshiftWithSfnStack(Stack):
             ],  # need IAM role for S3 COPY
             publicly_accessible=False,
         )
+
         self.redshift_secret = secretsmanager.Secret(
             self,
             "RedshiftSecret",
@@ -144,7 +147,9 @@ class LoadRedshiftWithSfnStack(Stack):
             timeout=Duration.seconds(3),  # should be instantaneous
             memory_size=128,  # in MB
             environment={
-                "DYNAMODB_TTL_IN_DAYS": str(environment["DYNAMODB_TTL_IN_DAYS"]),
+                "DYNAMODB_TTL_IN_DAYS": json.dumps(environment["DYNAMODB_TTL_IN_DAYS"]),
+                "FILE_TYPE": environment["FILE_TYPE"],
+                "REDSHIFT_COPY_ADDITIONAL_ARGUMENTS": environment["REDSHIFT_COPY_ADDITIONAL_ARGUMENTS"],
                 "REDSHIFT_DATABASE_NAME": environment["REDSHIFT_DATABASE_NAME"],
                 "REDSHIFT_SCHEMA_NAME": environment["REDSHIFT_SCHEMA_NAME"],
                 "REDSHIFT_TABLE_NAME": environment["REDSHIFT_TABLE_NAME"],
